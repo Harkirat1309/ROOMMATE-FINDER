@@ -130,3 +130,4 @@ No screenshot images were available in the workspace. Add visual assets under `a
 ## License
 
 No license file is currently included in this repository. Add a `LICENSE` file to define the project license clearly.
+
