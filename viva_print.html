@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ROOOMIE - Viva Preparation Guide</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Fira+Code:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;color:#1a1a2e;line-height:1.7;padding:40px 60px;max-width:900px;margin:auto;font-size:13px}
+@media print{body{padding:20px 30px;font-size:11.5px}h1{font-size:22px!important}.page-break{page-break-before:always}table{font-size:10.5px}}
+h1{font-size:28px;font-weight:900;color:#6C3CE1;margin:30px 0 10px;border-bottom:3px solid #6C3CE1;padding-bottom:8px}
+h2{font-size:18px;font-weight:700;color:#2d2d5e;margin:22px 0 8px;border-left:4px solid #6C3CE1;padding-left:12px}
+h3{font-size:15px;font-weight:700;color:#444;margin:16px 0 6px}
+p,li{margin-bottom:5px}
+ul,ol{padding-left:22px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:12px}
+th{background:#6C3CE1;color:#fff;padding:8px 10px;text-align:left;font-weight:600}
+td{padding:7px 10px;border-bottom:1px solid #e0e0e0}
+tr:nth-child(even){background:#f8f6ff}
+code{font-family:'Fira Code',monospace;background:#f0ecff;padding:1px 5px;border-radius:3px;font-size:11.5px;color:#6C3CE1}
+pre{background:#1a1a2e;color:#e0e0e0;padding:14px 18px;border-radius:8px;overflow-x:auto;margin:10px 0 16px;font-size:11px;line-height:1.5}
+pre code{background:none;color:#e0e0e0;padding:0}
+blockquote{background:#f0ecff;border-left:4px solid #6C3CE1;padding:10px 16px;margin:8px 0 14px;border-radius:0 6px 6px 0;font-style:italic}
+.q{color:#6C3CE1;font-weight:700;margin-top:12px}
+hr{border:none;border-top:2px dashed #d0c4f7;margin:24px 0}
+.tip{background:#e8fce8;border-left:4px solid #2da44e;padding:10px 16px;border-radius:0 6px 6px 0;margin:16px 0}
+.cover{text-align:center;padding:60px 0 40px}
+.cover h1{font-size:36px;border:none;color:#6C3CE1}
+.cover p{font-size:16px;color:#555;margin:8px 0}
+.emoji{font-size:48px;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<div class="cover">
+<div class="emoji">🎓🏠</div>
+<h1>ROOOMIE — Viva Preparation Guide</h1>
+<p><strong>Roommate Compatibility Matching System</strong></p>
+<p>Database: <code>main_system_db</code> | MySQL + Node.js + Express</p>
+<p style="margin-top:30px;color:#888;font-size:12px">Complete guide covering all 5 SQL files, stored procedures, functions, triggers, views &amp; backend</p>
+</div>
+
+<hr>
+
+<h2>📌 Project Overview (Say This First!)</h2>
+<blockquote><strong>ROOOMIE</strong> is a <strong>Roommate Compatibility Matching System</strong> built on MySQL. It lets hostel students register, fill lifestyle profiles, get auto-calculated compatibility scores, and send/accept pairing requests. It has a full audit trail, admin dashboard, and a Node.js REST API.</blockquote>
+
+<div class="page-break"></div>
+
+<h1>📁 FILE 1: 01_schema.sql — Tables, Constraints &amp; Indexes</h1>
+
+<h2>Tables Created (6 total)</h2>
+
+<h3>1. <code>users</code> — Core user accounts</h3>
+<table><tr><th>Column</th><th>Type</th><th>Key Points</th></tr>
+<tr><td><code>user_id</code></td><td>INT UNSIGNED AUTO_INCREMENT</td><td>Primary Key</td></tr>
+<tr><td><code>email</code></td><td>VARCHAR(150)</td><td>UNIQUE, CHECK with REGEXP</td></tr>
+<tr><td><code>password_hash</code></td><td>VARCHAR(255)</td><td>bcrypt hash, <strong>never plain text</strong></td></tr>
+<tr><td><code>role</code></td><td>ENUM('user','admin','moderator')</td><td>Default = 'user'</td></tr>
+<tr><td><code>status</code></td><td>ENUM('active','inactive','banned','pending')</td><td>Default = 'active'</td></tr>
+<tr><td><code>email_verified</code></td><td>TINYINT(1)</td><td>0 or 1 (boolean)</td></tr>
+<tr><td><code>created_at/updated_at</code></td><td>DATETIME</td><td>Auto-set via DEFAULT CURRENT_TIMESTAMP</td></tr>
+</table>
+
+<p><strong>Constraints:</strong></p>
+<ul>
+<li><code>uq_users_email</code> — email must be unique</li>
+<li><code>chk_email_format</code> — CHECK with REGEXP validates email format</li>
+<li><code>chk_name_length</code> — name must be ≥ 2 chars</li>
+</ul>
+
+<h3>2. <code>user_profiles</code> — Lifestyle preferences</h3>
+<table><tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+<tr><td><code>food_preference</code></td><td>ENUM('Veg','Non-Veg','Vegan','Jain','Any')</td><td>Compatibility</td></tr>
+<tr><td><code>sleep_schedule</code></td><td>ENUM('Early Bird','Night Owl','Flexible')</td><td>Compatibility</td></tr>
+<tr><td><code>cleanliness_level</code></td><td>TINYINT (1-5)</td><td>CHECK BETWEEN 1 AND 5</td></tr>
+<tr><td><code>study_habit</code></td><td>ENUM('Silent','Music','Group','Flexible')</td><td>Compatibility</td></tr>
+<tr><td><code>social_type</code></td><td>ENUM('Introvert','Extrovert','Ambivert')</td><td>Compatibility</td></tr>
+</table>
+<p><strong>FK:</strong> <code>user_id REFERENCES users(user_id) ON DELETE CASCADE</code> — 1:1 relationship (UNIQUE on user_id)</p>
+
+<h3>3. <code>pairings</code> — Roommate match requests</h3>
+<ul>
+<li><code>pairing_status</code> — ENUM: pending → accepted/rejected/cancelled/expired</li>
+<li><code>match_score</code> — DECIMAL(5,2), range 0–100, auto-calculated</li>
+<li><code>chk_no_self_pairing</code> — <code>CHECK (user_id_1 &lt;&gt; user_id_2)</code></li>
+<li><code>uq_pairing_pair</code> — <code>UNIQUE(LEAST(user_id_1,user_id_2), GREATEST(...))</code> — prevents duplicates regardless of direction</li>
+</ul>
+
+<h3>4. <code>activity_logs</code> — Audit trail (JSON old/new values, immutable)</h3>
+<h3>5. <code>sessions</code> — Login session management</h3>
+<h3>6. <code>notifications</code> — User notification inbox</h3>
+
+<h3>Indexes (14 total)</h3>
+<pre><code>CREATE INDEX idx_users_status      ON users(status);
+CREATE INDEX idx_pairings_score    ON pairings(match_score DESC);
+CREATE INDEX idx_notif_user_unread ON notifications(user_id, is_read); -- composite</code></pre>
+
+<h2>❓ Likely Viva Questions — Schema</h2>
+
+<p class="q">Q: Why use ENUM instead of VARCHAR?</p>
+<blockquote>ENUM restricts values to a predefined set, saves storage (stored as integers internally), and prevents invalid data.</blockquote>
+
+<p class="q">Q: What is ON DELETE CASCADE?</p>
+<blockquote>When the parent row is deleted, all child rows are automatically deleted. E.g., deleting a user auto-deletes their profile, pairings, sessions.</blockquote>
+
+<p class="q">Q: What is ON DELETE SET NULL?</p>
+<blockquote>In activity_logs, if a user is deleted, their user_id becomes NULL instead of deleting the log. Preserves audit history.</blockquote>
+
+<p class="q">Q: Why LEAST() and GREATEST() in the unique constraint?</p>
+<blockquote>Prevents duplicate pairings regardless of order. (1,5) and (5,1) both resolve to LEAST=1, GREATEST=5.</blockquote>
+
+<p class="q">Q: Why utf8mb4 charset?</p>
+<blockquote>Supports full Unicode including emojis (4-byte). Regular utf8 in MySQL only supports 3-byte characters.</blockquote>
+
+<p class="q">Q: What is a CHECK constraint?</p>
+<blockquote>Validates data before insert/update. E.g., <code>CHECK (cleanliness_level BETWEEN 1 AND 5)</code></blockquote>
+
+<div class="page-break"></div>
+
+<h1>📁 FILE 2: 02_procedures.sql — Stored Procedures (7)</h1>
+
+<h2>What is a Stored Procedure?</h2>
+<blockquote>A precompiled set of SQL statements stored in the database. Supports IN/OUT parameters, variables, conditions, transactions. Called with <code>CALL procedure_name(...)</code>.</blockquote>
+
+<h2>Procedure 1: <code>sp_create_user</code></h2>
+<pre><code>CREATE PROCEDURE sp_create_user(
+    IN  p_name VARCHAR(100), IN p_email VARCHAR(150),
+    IN  p_password_hash VARCHAR(255), IN p_phone VARCHAR(20),
+    IN  p_gender VARCHAR(10), IN p_bio TEXT,
+    OUT p_user_id INT UNSIGNED   -- OUTPUT parameter
+)</code></pre>
+<p><strong>Steps:</strong></p>
+<ol>
+<li>Validates name and email are not empty</li>
+<li>Checks duplicate email — <code>IF EXISTS (SELECT 1 FROM users WHERE email = ...)</code></li>
+<li>Starts TRANSACTION — ensures atomicity</li>
+<li>Inserts into users with <code>TRIM()</code>, <code>LOWER()</code>, <code>NULLIF()</code></li>
+<li>Gets new ID — <code>SET p_user_id = LAST_INSERT_ID()</code></li>
+<li>Auto-creates empty profile row</li>
+<li>Logs the event to activity_logs with JSON</li>
+<li>COMMIT — if anything fails, ROLLBACK via EXIT HANDLER</li>
+</ol>
+<p><strong>Key concepts:</strong> <code>SIGNAL SQLSTATE '45000'</code> (custom error), <code>DECLARE EXIT HANDLER</code> (catches errors), <code>NULLIF(x,'')</code> (empty→NULL), <code>LAST_INSERT_ID()</code></p>
+
+<h2>Procedure 2: <code>sp_update_user</code></h2>
+<p>Snapshots old values before updating for audit. Uses <code>IFNULL(NULLIF(TRIM(p_name),''), name)</code> — keeps old value if new is empty.</p>
+
+<h2>Procedure 3: <code>sp_delete_user</code></h2>
+<p>Supports <strong>soft delete</strong> (status='inactive') and <strong>hard delete</strong> (DELETE FROM users). Both logged with admin ID.</p>
+
+<h2>Procedure 4: <code>sp_save_profile</code></h2>
+<p>Uses <code>INSERT ... ON DUPLICATE KEY UPDATE</code> (UPSERT). If profile exists → update; if not → insert.</p>
+
+<h2>Procedure 5: <code>sp_send_pairing_request</code> (Most Complex)</h2>
+<ol>
+<li>Self-pairing guard</li>
+<li>Both users must be active</li>
+<li>No existing active pairing (checks with LEAST/GREATEST)</li>
+<li>Calls <code>fn_compatibility_score()</code> to auto-calculate</li>
+<li>Inserts pairing with 7-day expiry</li>
+<li>Creates notification for recipient</li>
+<li>Logs the event</li>
+</ol>
+
+<h2>Procedure 6: <code>sp_respond_to_pairing</code></h2>
+<p>Uses <code>SELECT ... FOR UPDATE</code> (row-level locking). Only recipient can respond. Only pending requests accepted. Notifies sender.</p>
+
+<h2>Procedure 7: <code>sp_cancel_pairing</code></h2>
+<p>Only the initiator can cancel. Only pending requests can be cancelled.</p>
+
+<h2>❓ Likely Viva Questions — Procedures</h2>
+
+<p class="q">Q: Difference between IN and OUT parameters?</p>
+<blockquote>IN = input (read-only). OUT = output returned (write-only). INOUT = both.</blockquote>
+
+<p class="q">Q: What is a TRANSACTION?</p>
+<blockquote>Groups SQL statements into one atomic unit. ALL succeed (COMMIT) or ALL fail (ROLLBACK). In sp_create_user, if profile insert fails, user insert is rolled back.</blockquote>
+
+<p class="q">Q: What is SIGNAL SQLSTATE?</p>
+<blockquote>MySQL's way to throw custom errors. '45000' is user-defined range. We use '45001' for duplicate email, '45003' for self-pairing.</blockquote>
+
+<p class="q">Q: What is ON DUPLICATE KEY UPDATE?</p>
+<blockquote>If INSERT violates UNIQUE/PRIMARY key, updates existing row instead. It's an UPSERT (Insert or Update).</blockquote>
+
+<p class="q">Q: What is SELECT ... FOR UPDATE?</p>
+<blockquote>Locks selected rows so no other transaction can modify them. Prevents race conditions.</blockquote>
+
+<div class="page-break"></div>
+
+<h1>📁 FILE 3: 03_functions_triggers.sql</h1>
+
+<h2>Function 1: <code>fn_compatibility_score(user1, user2)</code> → DECIMAL(5,2)</h2>
+<p><strong>THE HEART OF THE PROJECT.</strong> Calculates roommate compatibility (0-100).</p>
+
+<table><tr><th>Category</th><th>Max Points</th><th>Logic</th></tr>
+<tr><td>Food Preference</td><td>25</td><td>Match OR either is 'Any' → 25 pts</td></tr>
+<tr><td>Sleep Schedule</td><td>25</td><td>Match OR either is 'Flexible' → 25, mismatch → 5</td></tr>
+<tr><td>Cleanliness</td><td>20</td><td>diff=0→20, diff=1→15, diff=2→8, diff=3→3, diff=4→0</td></tr>
+<tr><td>Study Habit</td><td>20</td><td>Match OR either is 'Flexible' → 20, mismatch → 5</td></tr>
+<tr><td>Social Type</td><td>10</td><td>Match OR either is 'Ambivert' → 10, mismatch → 3</td></tr>
+</table>
+<p><strong>Key:</strong> <code>DETERMINISTIC</code> (same inputs = same output), <code>READS SQL DATA</code>, uses <code>ABS()</code>, <code>CASE...WHEN</code>, <code>ROUND(LEAST(v_score,100),2)</code></p>
+
+<h2>Function 2: <code>fn_user_pairing_status(user_id)</code> → VARCHAR(20)</h2>
+<p>Returns: <code>'paired'</code> | <code>'pending'</code> | <code>'available'</code></p>
+
+<h2>❓ Function vs Procedure</h2>
+<table><tr><th>Feature</th><th>Function</th><th>Procedure</th></tr>
+<tr><td>Returns</td><td>Single value (RETURN)</td><td>No direct return (OUT params)</td></tr>
+<tr><td>Called with</td><td><code>SELECT fn_name()</code></td><td><code>CALL sp_name()</code></td></tr>
+<tr><td>Use in SQL</td><td>Can use in SELECT, WHERE</td><td>Cannot use in SELECT</td></tr>
+<tr><td>DML</td><td>Should not modify data</td><td>Can modify data</td></tr>
+</table>
+
+<h2>Triggers (4)</h2>
+
+<h3>Trigger 1: <code>trg_after_user_insert</code> (AFTER INSERT ON users)</h3>
+<p>Auto-logs creation event with JSON of name, email, gender, role. Uses <code>NEW.user_id</code>, <code>NEW.name</code>.</p>
+
+<h3>Trigger 2: <code>trg_after_user_update</code> (AFTER UPDATE ON users)</h3>
+<p>Detects which fields changed by comparing OLD vs NEW. Builds JSON diff with <code>JSON_SET()</code>.</p>
+
+<h3>Trigger 3: <code>trg_before_pairing_insert</code> (BEFORE INSERT ON pairings)</h3>
+<ol>
+<li><strong>Normalizes IDs</strong> — smaller ID always stored as user_id_1</li>
+<li><strong>Sets default expiry</strong> — 7 days via <code>DATE_ADD(NOW(), INTERVAL 7 DAY)</code></li>
+<li><strong>Auto-calculates score</strong> — calls <code>fn_compatibility_score()</code></li>
+</ol>
+
+<h3>Trigger 4: <code>trg_after_pairing_update</code> (AFTER UPDATE ON pairings)</h3>
+<p>Logs status transitions only when status actually changed.</p>
+
+<h3>Event: <code>evt_expire_pairings</code></h3>
+<pre><code>CREATE EVENT evt_expire_pairings
+ON SCHEDULE EVERY 1 HOUR
+DO BEGIN
+    UPDATE pairings SET pairing_status = 'expired'
+    WHERE pairing_status = 'pending' AND expires_at &lt; NOW();
+END</code></pre>
+<p>Requires <code>SET GLOBAL event_scheduler = ON</code></p>
+
+<h2>❓ Likely Questions — Triggers</h2>
+<p class="q">Q: BEFORE vs AFTER trigger?</p>
+<blockquote>BEFORE fires before row is written — can MODIFY NEW values. AFTER fires after — can only READ NEW/OLD.</blockquote>
+
+<p class="q">Q: What are NEW and OLD?</p>
+<blockquote>NEW = row being inserted/updated. OLD = row before update/delete. INSERT has only NEW, DELETE has only OLD, UPDATE has both.</blockquote>
+
+<p class="q">Q: Why normalize IDs in BEFORE INSERT?</p>
+<blockquote>So (5,1) and (1,5) are stored as (1,5). Makes UNIQUE constraint work correctly.</blockquote>
+
+<div class="page-break"></div>
+
+<h1>📁 FILE 4: 04_views.sql — 10 Views</h1>
+
+<blockquote>A <strong>view</strong> is a virtual table based on a SELECT query. No data stored — runs query each time. Used for simplifying complex queries.</blockquote>
+
+<table><tr><th>View</th><th>Purpose</th><th>Key Feature</th></tr>
+<tr><td><code>vw_all_users</code></td><td>All users + profiles</td><td>JOIN profiles, calls fn_user_pairing_status()</td></tr>
+<tr><td><code>vw_active_users</code></td><td>Active users only</td><td>Filters from vw_all_users</td></tr>
+<tr><td><code>vw_all_pairings</code></td><td>Pairings with names</td><td>3-way JOIN, CASE for score_label</td></tr>
+<tr><td><code>vw_active_pairings</code></td><td>Accepted only</td><td>Filter from vw_all_pairings</td></tr>
+<tr><td><code>vw_pending_pairings</code></td><td>Pending + not expired</td><td>WHERE expires_at > NOW()</td></tr>
+<tr><td><code>vw_recent_activity</code></td><td>Last 100 events</td><td>LEFT JOIN (system = NULL user)</td></tr>
+<tr><td><code>vw_dashboard_stats</code></td><td>Summary counts</td><td>Scalar subqueries</td></tr>
+<tr><td><code>vw_top_matches</code></td><td>Highest scores</td><td>ORDER BY match_score DESC</td></tr>
+<tr><td><code>vw_available_users</code></td><td>Users without pairing</td><td>fn_user_pairing_status()='available'</td></tr>
+<tr><td><code>vw_user_activity_summary</code></td><td>Per-user stats</td><td>GROUP BY, COUNT, SUM</td></tr>
+</table>
+
+<h3>CASE expression in vw_all_pairings:</h3>
+<pre><code>CASE
+  WHEN match_score >= 80 THEN 'Excellent'
+  WHEN match_score >= 60 THEN 'Good'
+  WHEN match_score >= 40 THEN 'Fair'
+  ELSE 'Low'
+END AS score_label</code></pre>
+
+<h2>❓ Likely Questions — Views</h2>
+<p class="q">Q: View vs Table?</p>
+<blockquote>View = virtual, no data stored, always latest. Table = physical, data on disk.</blockquote>
+<p class="q">Q: Can you INSERT through a view?</p>
+<blockquote>Simple views (single table) — yes. Complex views (joins, GROUP BY) — no.</blockquote>
+<p class="q">Q: What is LEFT JOIN?</p>
+<blockquote>Returns ALL rows from left table even if no match in right (NULL for unmatched).</blockquote>
+
+<div class="page-break"></div>
+
+<h1>📁 FILE 5: 05_sample_data_and_queries.sql</h1>
+
+<h2>Sample Data</h2>
+<p>10 users with Indian names, 6 pairings covering all statuses, varied lifestyle profiles.</p>
+
+<h2>CRUD Operations</h2>
+<h3>CREATE</h3>
+<pre><code>CALL sp_create_user('Test User','test@demo.com','$hash','999','Male','Bio',@uid);
+CALL sp_save_profile(@uid,'Veg','Flexible',4,'Silent','Ambivert',...);
+CALL sp_send_pairing_request(@uid, 3, 'Hi!', @pid);</code></pre>
+
+<h3>READ</h3>
+<pre><code>SELECT * FROM vw_all_users WHERE user_id = 1;
+SELECT * FROM users WHERE name LIKE '%Arjun%';
+SELECT fn_compatibility_score(1, 5) AS score;</code></pre>
+
+<h3>UPDATE</h3>
+<pre><code>CALL sp_update_user(1, 'Arjun Kumar', '987654', 'Male', 'New bio');
+CALL sp_respond_to_pairing(3, 7, 'accept');</code></pre>
+
+<h3>DELETE</h3>
+<pre><code>CALL sp_delete_user(@uid, 0, 10);  -- soft delete
+CALL sp_delete_user(@uid, 1, 10);  -- hard delete
+CALL sp_cancel_pairing(4, 4);</code></pre>
+
+<hr>
+
+<h1>📁 Backend: server.js — Node.js REST API</h1>
+<p><strong>Tech:</strong> Express.js + mysql2 + bcryptjs + cors</p>
+<ul>
+<li><strong>Connection pooling:</strong> <code>mysql.createPool()</code> — reuses connections</li>
+<li><strong>Password hashing:</strong> <code>bcrypt.hash(password, 12)</code></li>
+<li><strong>SQL injection prevention:</strong> parameterized queries with <code>?</code> placeholders</li>
+<li><strong>Error handling:</strong> asyncHandler wraps routes; SQLSTATE mapped to HTTP codes</li>
+</ul>
+
+<p class="q">Q: What is connection pooling?</p>
+<blockquote>Maintains reusable DB connections. Connections borrowed and returned. connectionLimit: 10.</blockquote>
+<p class="q">Q: How is SQL injection prevented?</p>
+<blockquote>Parameterized queries — <code>pool.execute('SELECT * FROM users WHERE id = ?', [userId])</code></blockquote>
+<p class="q">Q: Why bcrypt?</p>
+<blockquote>One-way, salted, slow hashing. Even if DB is compromised, passwords can't be reversed.</blockquote>
+
+<div class="page-break"></div>
+
+<h1>🔥 Top 20 Rapid-Fire Questions</h1>
+
+<table><tr><th>#</th><th>Question</th><th>Quick Answer</th></tr>
+<tr><td>1</td><td>What is your project about?</td><td>Roommate matching with compatibility scoring</td></tr>
+<tr><td>2</td><td>How many tables?</td><td>6 — users, user_profiles, pairings, activity_logs, sessions, notifications</td></tr>
+<tr><td>3</td><td>Primary key of users?</td><td>user_id INT UNSIGNED AUTO_INCREMENT</td></tr>
+<tr><td>4</td><td>What is a foreign key?</td><td>Links child to parent. user_profiles.user_id → users.user_id</td></tr>
+<tr><td>5</td><td>What happens on delete user?</td><td>CASCADE deletes related rows; SET NULL in logs</td></tr>
+<tr><td>6</td><td>How is compatibility calculated?</td><td>fn_compatibility_score() — 5 weighted dimensions (100 pts)</td></tr>
+<tr><td>7</td><td>What is a stored procedure?</td><td>Precompiled SQL program, CALL to execute, IN/OUT params</td></tr>
+<tr><td>8</td><td>What is a trigger?</td><td>Auto-executing code on INSERT/UPDATE/DELETE</td></tr>
+<tr><td>9</td><td>What is a view?</td><td>Virtual table from SELECT — no stored data</td></tr>
+<tr><td>10</td><td>What is a transaction?</td><td>Atomic group — all succeed or all rollback</td></tr>
+<tr><td>11</td><td>What is ACID?</td><td>Atomicity, Consistency, Isolation, Durability</td></tr>
+<tr><td>12</td><td>What is an index?</td><td>Speeds up SELECT queries, like a book's index</td></tr>
+<tr><td>13</td><td>What is normalization?</td><td>Reducing redundancy — users + profiles separated</td></tr>
+<tr><td>14</td><td>users ↔ profiles relationship?</td><td>One-to-One (UNIQUE on user_id)</td></tr>
+<tr><td>15</td><td>Why JSON columns?</td><td>Flexible audit data (old/new values in logs)</td></tr>
+<tr><td>16</td><td>What is DELIMITER $$?</td><td>Changes terminator so MySQL doesn't end procedure at first ;</td></tr>
+<tr><td>17</td><td>Soft vs hard delete?</td><td>Soft = set inactive. Hard = DELETE permanently</td></tr>
+<tr><td>18</td><td>What is bcrypt?</td><td>One-way salted password hashing algorithm</td></tr>
+<tr><td>19</td><td>What is REST API?</td><td>HTTP methods (GET/POST/PUT/DELETE) for CRUD</td></tr>
+<tr><td>20</td><td>What is CORS?</td><td>Allows frontend on different domain to call API</td></tr>
+</table>
+
+<div class="tip">
+<strong>💡 TIP:</strong> Always relate answers back to YOUR project. Say <em>"In my project, I used triggers to automatically log every user update..."</em> instead of just <em>"A trigger is..."</em>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>main_system_db — Live Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0D1117; --surface:#161B22; --surface2:#21262D;
+  --border:#30363D; --border2:#484F58;
+  --text:#E6EDF3; --text2:#8B949E; --text3:#6E7681;
+  --green:#3FB950; --green-dim:#1F4E2B; --green-glow:rgba(63,185,80,.15);
+  --blue:#58A6FF; --blue-dim:#1A3A5C; --blue-glow:rgba(88,166,255,.15);
+  --orange:#F0883E; --orange-dim:#4D2C0A;
+  --red:#F85149; --red-dim:#4D1B1A;
+  --purple:#BC8CFF; --purple-dim:#2D1F4E;
+  --yellow:#E3B341; --yellow-dim:#3D2E0A;
+  --accent:#238636;
+  --radius:8px; --radius-lg:12px;
+  --mono:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── TOP BAR ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:100}
+.topbar-logo{font-family:var(--mono);font-size:13px;color:var(--blue);font-weight:600}
+.topbar-logo span{color:var(--text2)}
+.topbar-db{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--green)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;margin-left:auto}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--green-glow)}50%{box-shadow:0 0 0 6px transparent}}
+.topbar-time{font-family:var(--mono);font-size:11px;color:var(--text3)}
+.refresh-btn{background:var(--accent);border:none;color:white;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;transition:.15s}
+.refresh-btn:hover{filter:brightness(1.1)}
+.auto-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer}
+.toggle{width:32px;height:18px;background:var(--surface2);border-radius:9px;border:1px solid var(--border);position:relative;cursor:pointer;transition:.2s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';width:12px;height:12px;border-radius:50%;background:white;position:absolute;top:2px;left:2px;transition:.2s}
+.toggle.on::after{left:16px}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 52px)}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0}
+.sidebar-section{padding:0 12px;margin-bottom:4px}
+.sidebar-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 8px 4px}
+.sidebar-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;color:var(--text2);font-size:13px;cursor:pointer;transition:.15s;margin:1px 0}
+.sidebar-item:hover{background:var(--surface2);color:var(--text)}
+.sidebar-item.active{background:var(--blue-dim);color:var(--blue);border-left:2px solid var(--blue)}
+.sidebar-icon{font-size:14px;width:18px;text-align:center}
+.sidebar-badge{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:10px;font-family:var(--mono);padding:1px 7px;color:var(--text3)}
+.sidebar-badge.live{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+
+/* ── MAIN ── */
+.main{overflow:auto}
+.tab-pane{display:none;padding:24px;animation:fadeIn .15s}
+.tab-pane.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── PAGE HEADER ── */
+.pane-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.pane-title{font-size:18px;font-weight:600}
+.pane-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.query-pill{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:var(--text3);margin-left:auto}
+
+/* ── STAT CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.stat-val{font-size:28px;font-weight:700;font-family:var(--mono);line-height:1}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:6px;text-transform:uppercase;letter-spacing:.05em}
+.stat-card.green .stat-val{color:var(--green)}
+.stat-card.blue  .stat-val{color:var(--blue)}
+.stat-card.orange.stat-val{color:var(--orange)}
+.stat-card.orange .stat-val{color:var(--orange)}
+.stat-card.purple .stat-val{color:var(--purple)}
+.stat-card.yellow .stat-val{color:var(--yellow)}
+.stat-card.red    .stat-val{color:var(--red)}
+
+/* ── TABLE ── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px}
+.table-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.table-title{font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text2)}
+.row-count{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:4px;color:var(--text3)}
+.search-box{margin-left:auto;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;outline:none;width:180px;transition:.15s}
+.search-box:focus{border-color:var(--blue);width:220px}
+.filter-sel{padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:12px;cursor:pointer}
+
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:var(--surface2);color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.05em;font-size:10px;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+.data-table th:hover{color:var(--text)}
+.data-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(255,255,255,.02)}
+.mono{font-family:var(--mono);color:var(--blue)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-green  {background:var(--green-dim); color:var(--green)}
+.badge-blue   {background:var(--blue-dim);  color:var(--blue)}
+.badge-orange {background:var(--orange-dim);color:var(--orange)}
+.badge-red    {background:var(--red-dim);   color:var(--red)}
+.badge-purple {background:var(--purple-dim);color:var(--purple)}
+.badge-yellow {background:var(--yellow-dim);color:var(--yellow)}
+.badge-gray   {background:var(--surface2);  color:var(--text3);border:1px solid var(--border)}
+.badge::before{content:'●';font-size:8px}
+
+/* ── ACTIVITY FEED ── */
+.activity-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.activity-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);transition:.1s}
+.activity-item:last-child{border-bottom:none}
+.activity-item:hover{background:rgba(255,255,255,.02)}
+.activity-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px}
+.activity-body{flex:1;min-width:0}
+.activity-action{font-size:12px;font-weight:500;font-family:var(--mono);color:var(--blue)}
+.activity-msg{font-size:12px;color:var(--text2);margin-top:2px}
+.activity-time{font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--mono)}
+.activity-status{margin-left:auto;flex-shrink:0}
+
+/* ── SCORE BAR ── */
+.score-bar{display:flex;align-items:center;gap:8px}
+.score-track{flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;max-width:80px}
+.score-fill{height:100%;border-radius:2px;transition:.3s}
+.score-num{font-family:var(--mono);font-size:11px;color:var(--text2);min-width:30px}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:48px;color:var(--text3)}
+.empty-icon{font-size:32px;margin-bottom:12px}
+.empty h3{font-size:14px;color:var(--text2);margin-bottom:6px}
+
+/* ── SQL PANEL ── */
+.sql-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px}
+.sql-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sql-dot{width:10px;height:10px;border-radius:50%}
+.sql-code{font-family:var(--mono);font-size:12px;padding:14px 16px;color:var(--text2);line-height:1.6;overflow-x:auto;white-space:pre}
+.sql-keyword{color:var(--purple)}
+.sql-table{color:var(--blue)}
+.sql-string{color:var(--green)}
+.sql-comment{color:var(--text3);font-style:italic}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">🗄 main_system_<span>db</span></div>
+  <div class="topbar-db">● Connected</div>
+  <div class="live-dot" title="Live data"></div>
+  <div class="topbar-time" id="clock">--:--:--</div>
+  <label class="auto-toggle">
+    <div class="toggle on" id="autoToggle" onclick="toggleAuto(this)"></div>
+    Auto-refresh
+  </label>
+  <button class="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Views</div>
+      <div class="sidebar-item active" onclick="switchTab('dashboard',this)">
+        <span class="sidebar-icon">📊</span> Dashboard
+      </div>
+      <div class="sidebar-item" onclick="switchTab('users',this)">
+        <span class="sidebar-icon">👥</span> All Users
+        <span class="sidebar-badge live" id="badge-users">—</span>
+      </div>
+      <div class="sidebar-item" onclick="switchTab('available',this)">
+        <span class="sidebar-icon">🔓</span> Available
+        <span class="sidebar-badge" id="badge-available">—</span>
+      </div>
+      <div class="sidebar-item" onclick="switchTab('pairings',this)">
+        <span class="sidebar-icon">🔗</span> All Pairings
+        <span class="sidebar-badge live" id="badge-pairings">—</span>
+      </div>
+      <div class="sidebar-item" onclick="switchTab('active_pairs',this)">
+        <span class="sidebar-icon">✅</span> Active Pairs
+      </div>
+      <div class="sidebar-item" onclick="switchTab('pending',this)">
+        <span class="sidebar-icon">⏳</span> Pending
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Live</div>
+      <div class="sidebar-item" onclick="switchTab('activity',this)">
+        <span class="sidebar-icon">📡</span> Activity Feed
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Reference</div>
+      <div class="sidebar-item" onclick="switchTab('queries',this)">
+        <span class="sidebar-icon">💾</span> SQL Queries
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="tab-pane active" id="pane-dashboard">
+      <div class="pane-header">
+        <div>
+          <div class="pane-title">Dashboard</div>
+          <div class="pane-sub">Live snapshot · updates every 5s</div>
+        </div>
+        <div class="query-pill">SELECT * FROM vw_dashboard_stats;</div>
+      </div>
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-card blue"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">Total Users</div></div>
+        <div class="stat-card green"><div class="stat-val" id="s-active">—</div><div class="stat-lbl">Active Users</div></div>
+        <div class="stat-card yellow"><div class="stat-val" id="s-today">—</div><div class="stat-lbl">Joined Today</div></div>
+        <div class="stat-card purple"><div class="stat-val" id="s-paired">—</div><div class="stat-lbl">Active Pairs</div></div>
+        <div class="stat-card orange"><div class="stat-val" id="s-pending">—</div><div class="stat-lbl">Pending</div></div>
+        <div class="stat-card green"><div class="stat-val" id="s-events">—</div><div class="stat-lbl">Events Today</div></div>
+        <div class="stat-card blue"><div class="stat-val" id="s-score">—</div><div class="stat-lbl">Avg Score</div></div>
+        <div class="stat-card red"><div class="stat-val" id="s-week">—</div><div class="stat-lbl">Joined This Week</div></div>
+      </div>
+      <div class="pane-header" style="margin-top:4px">
+        <div><div class="pane-title" style="font-size:14px">Recent Activity</div></div>
+      </div>
+      <div class="activity-list" id="dash-activity"></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="tab-pane" id="pane-users">
+      <div class="pane-header">
+        <div><div class="pane-title">All Users</div><div class="pane-sub">vw_all_users — real-time data</div></div>
+        <div class="query-pill">SELECT * FROM vw_all_users;</div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span class="table-title">vw_all_users</span>
+          <span class="row-count" id="users-count">— rows</span>
+          <select class="filter-sel" id="user-status-filter" onchange="loadUsers()">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="banned">Banned</option>
+          </select>
+          <select class="filter-sel" id="user-gender-filter" onchange="loadUsers()">
+            <option value="">All Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <input class="search-box" type="text" id="user-search" placeholder="Search name or email..." oninput="loadUsers()">
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th onclick="sortTable('users','user_id')">ID ↕</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Gender</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Pairing</th>
+              <th>Food</th>
+              <th>Sleep</th>
+              <th>Social</th>
+              <th>Location</th>
+              <th>Joined</th>
+              <th>Last Login</th>
+            </tr></thead>
+            <tbody id="users-body">
+              <tr><td colspan="13" class="empty"><div class="empty-icon">⏳</div><div>Loading...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AVAILABLE USERS -->
+    <div class="tab-pane" id="pane-available">
+      <div class="pane-header">
+        <div><div class="pane-title">Available Users</div><div class="pane-sub">Not in any active pairing</div></div>
+        <div class="query-pill">SELECT * FROM vw_available_users;</div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span class="table-title">vw_available_users</span>
+          <span class="row-count" id="avail-count">— rows</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>ID</th><th>Name</th><th>Gender</th><th>Food</th>
+              <th>Sleep</th><th>Cleanliness</th><th>Social</th><th>Location</th>
+            </tr></thead>
+            <tbody id="available-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL PAIRINGS -->
+    <div class="tab-pane" id="pane-pairings">
+      <div class="pane-header">
+        <div><div class="pane-title">All Pairings</div><div class="pane-sub">vw_all_pairings — live</div></div>
+        <div class="query-pill">SELECT * FROM vw_all_pairings;</div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span class="table-title">vw_all_pairings</span>
+          <span class="row-count" id="pairings-count">— rows</span>
+          <select class="filter-sel" id="pair-status-filter" onchange="loadPairings()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>ID</th><th>User 1</th><th>User 2</th>
+              <th>Status</th><th>Score</th><th>Initiated By</th>
+              <th>Message</th><th>Responded</th><th>Created</th>
+            </tr></thead>
+            <tbody id="pairings-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVE PAIRS -->
+    <div class="tab-pane" id="pane-active_pairs">
+      <div class="pane-header">
+        <div><div class="pane-title">Active Pairs</div><div class="pane-sub">Accepted pairings only</div></div>
+        <div class="query-pill">SELECT * FROM vw_active_pairings;</div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span class="table-title">vw_active_pairings</span>
+          <span class="row-count" id="active-pairs-count">— rows</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>ID</th><th>User 1</th><th>User 2</th>
+              <th>Score</th><th>Grade</th><th>Responded</th><th>Created</th>
+            </tr></thead>
+            <tbody id="active-pairs-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PENDING -->
+    <div class="tab-pane" id="pane-pending">
+      <div class="pane-header">
+        <div><div class="pane-title">Pending Requests</div><div class="pane-sub">Awaiting response</div></div>
+        <div class="query-pill">SELECT * FROM vw_pending_pairings;</div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span class="table-title">vw_pending_pairings</span>
+          <span class="row-count" id="pending-count">— rows</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>ID</th><th>From</th><th>To</th>
+              <th>Score</th><th>Message</th><th>Expires</th><th>Hours Left</th>
+            </tr></thead>
+            <tbody id="pending-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="tab-pane" id="pane-activity">
+      <div class="pane-header">
+        <div><div class="pane-title">Activity Feed</div><div class="pane-sub">Last 50 events · auto-refreshing</div></div>
+        <div class="query-pill">SELECT * FROM vw_recent_activity;</div>
+      </div>
+      <div class="activity-list" id="activity-list"></div>
+    </div>
+
+    <!-- SQL QUERIES -->
+    <div class="tab-pane" id="pane-queries">
+      <div class="pane-header">
+        <div><div class="pane-title">SQL Query Reference</div><div class="pane-sub">Copy and run in MySQL Workbench</div></div>
+      </div>
+      <div id="sql-panels"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────
+const API = 'http://localhost:4000/api';
+let autoRefresh = true;
+let refreshTimer;
+const INTERVAL = 5000;  // 5 seconds
+
+// ─────────────────────────────────────────────
+//  MOCK DATA (when API is offline)
+// ─────────────────────────────────────────────
+const MOCK_USERS = [
+  {USER_ID:1,NAME:'Arjun Sharma',EMAIL:'arjun@demo.com',GENDER:'Male',ROLE:'user',STATUS:'active',PAIRING_STATUS:'paired',FOOD_PREFERENCE:'Non-Veg',SLEEP_SCHEDULE:'Night Owl',SOCIAL_TYPE:'Introvert',LOCATION:'Block-A',CREATED_AT:'2025-01-01',LAST_LOGIN:'2025-01-10'},
+  {USER_ID:2,NAME:'Priya Mehta',EMAIL:'priya@demo.com',GENDER:'Female',ROLE:'user',STATUS:'active',PAIRING_STATUS:'paired',FOOD_PREFERENCE:'Veg',SLEEP_SCHEDULE:'Early Bird',SOCIAL_TYPE:'Introvert',LOCATION:'Block-B',CREATED_AT:'2025-01-02',LAST_LOGIN:'2025-01-10'},
+  {USER_ID:3,NAME:'Rahul Verma',EMAIL:'rahul@demo.com',GENDER:'Male',ROLE:'user',STATUS:'active',PAIRING_STATUS:'pending',FOOD_PREFERENCE:'Non-Veg',SLEEP_SCHEDULE:'Night Owl',SOCIAL_TYPE:'Extrovert',LOCATION:'Block-A',CREATED_AT:'2025-01-02',LAST_LOGIN:'2025-01-09'},
+  {USER_ID:4,NAME:'Sneha Patel',EMAIL:'sneha@demo.com',GENDER:'Female',ROLE:'user',STATUS:'active',PAIRING_STATUS:'pending',FOOD_PREFERENCE:'Veg',SLEEP_SCHEDULE:'Flexible',SOCIAL_TYPE:'Ambivert',LOCATION:'Block-C',CREATED_AT:'2025-01-03',LAST_LOGIN:'2025-01-09'},
+  {USER_ID:5,NAME:'Vikram Singh',EMAIL:'vikram@demo.com',GENDER:'Male',ROLE:'user',STATUS:'active',PAIRING_STATUS:'paired',FOOD_PREFERENCE:'Any',SLEEP_SCHEDULE:'Night Owl',SOCIAL_TYPE:'Introvert',LOCATION:'Block-A',CREATED_AT:'2025-01-03',LAST_LOGIN:'2025-01-08'},
+  {USER_ID:6,NAME:'Anjali Gupta',EMAIL:'anjali@demo.com',GENDER:'Female',ROLE:'user',STATUS:'active',PAIRING_STATUS:'available',FOOD_PREFERENCE:'Vegan',SLEEP_SCHEDULE:'Early Bird',SOCIAL_TYPE:'Ambivert',LOCATION:'Block-B',CREATED_AT:'2025-01-04',LAST_LOGIN:'2025-01-08'},
+  {USER_ID:7,NAME:'Karan Joshi',EMAIL:'karan@demo.com',GENDER:'Male',ROLE:'user',STATUS:'active',PAIRING_STATUS:'pending',FOOD_PREFERENCE:'Non-Veg',SLEEP_SCHEDULE:'Flexible',SOCIAL_TYPE:'Extrovert',LOCATION:'Block-A',CREATED_AT:'2025-01-04',LAST_LOGIN:'2025-01-07'},
+  {USER_ID:8,NAME:'Neha Agarwal',EMAIL:'neha@demo.com',GENDER:'Female',ROLE:'user',STATUS:'active',PAIRING_STATUS:'paired',FOOD_PREFERENCE:'Veg',SLEEP_SCHEDULE:'Early Bird',SOCIAL_TYPE:'Introvert',LOCATION:'Block-C',CREATED_AT:'2025-01-05',LAST_LOGIN:'2025-01-09'},
+  {USER_ID:9,NAME:'Rohan Das',EMAIL:'rohan@demo.com',GENDER:'Male',ROLE:'user',STATUS:'active',PAIRING_STATUS:'pending',FOOD_PREFERENCE:'Any',SLEEP_SCHEDULE:'Night Owl',SOCIAL_TYPE:'Ambivert',LOCATION:'Block-B',CREATED_AT:'2025-01-06',LAST_LOGIN:'2025-01-07'},
+  {USER_ID:10,NAME:'Divya Nair',EMAIL:'divya@demo.com',GENDER:'Female',ROLE:'admin',STATUS:'active',PAIRING_STATUS:'available',FOOD_PREFERENCE:'Veg',SLEEP_SCHEDULE:'Flexible',SOCIAL_TYPE:'Introvert',LOCATION:'Block-B',CREATED_AT:'2025-01-06',LAST_LOGIN:'2025-01-10'},
+];
+const MOCK_PAIRINGS = [
+  {PAIRING_ID:1,USER_ID_1:1,USER1_NAME:'Arjun Sharma',USER_ID_2:5,USER2_NAME:'Vikram Singh',PAIRING_STATUS:'accepted',MATCH_SCORE:85,SCORE_LABEL:'Excellent',INITIATED_BY_NAME:'Arjun Sharma',MESSAGE:'We both love coding!',RESPONDED_AT:'2025-01-05',CREATED_AT:'2025-01-04'},
+  {PAIRING_ID:2,USER_ID_1:2,USER1_NAME:'Priya Mehta',USER_ID_2:8,USER2_NAME:'Neha Agarwal',PAIRING_STATUS:'accepted',MATCH_SCORE:90,SCORE_LABEL:'Excellent',INITIATED_BY_NAME:'Priya Mehta',MESSAGE:'Perfect match!',RESPONDED_AT:'2025-01-06',CREATED_AT:'2025-01-05'},
+  {PAIRING_ID:3,USER_ID_1:3,USER1_NAME:'Rahul Verma',USER_ID_2:7,USER2_NAME:'Karan Joshi',PAIRING_STATUS:'pending',MATCH_SCORE:72,SCORE_LABEL:'Good',INITIATED_BY_NAME:'Rahul Verma',MESSAGE:'Hey! Want to be roommates?',RESPONDED_AT:null,CREATED_AT:'2025-01-07'},
+  {PAIRING_ID:4,USER_ID_1:4,USER1_NAME:'Sneha Patel',USER_ID_2:9,USER2_NAME:'Rohan Das',PAIRING_STATUS:'pending',MATCH_SCORE:65,SCORE_LABEL:'Good',INITIATED_BY_NAME:'Sneha Patel',MESSAGE:'Flexible schedules could work',RESPONDED_AT:null,CREATED_AT:'2025-01-08'},
+  {PAIRING_ID:5,USER_ID_1:2,USER1_NAME:'Priya Mehta',USER_ID_2:6,USER2_NAME:'Anjali Gupta',PAIRING_STATUS:'rejected',MATCH_SCORE:55,SCORE_LABEL:'Fair',INITIATED_BY_NAME:'Anjali Gupta',MESSAGE:'Looking for a vegan',RESPONDED_AT:'2025-01-07',CREATED_AT:'2025-01-06'},
+  {PAIRING_ID:6,USER_ID_1:3,USER1_NAME:'Rahul Verma',USER_ID_2:5,USER2_NAME:'Vikram Singh',PAIRING_STATUS:'cancelled',MATCH_SCORE:45,SCORE_LABEL:'Fair',INITIATED_BY_NAME:'Rahul Verma',MESSAGE:'Changed my mind',RESPONDED_AT:null,CREATED_AT:'2025-01-06'},
+];
+const MOCK_STATS = {TOTAL_USERS:10,ACTIVE_USERS:10,INACTIVE_USERS:0,NEW_USERS_TODAY:2,NEW_USERS_WEEK:10,TOTAL_PAIRINGS:6,ACTIVE_PAIRINGS:2,PENDING_PAIRINGS:2,REJECTED_PAIRINGS:1,PAIRINGS_TODAY:1,EVENTS_TODAY:24,AVG_MATCH_SCORE:'68.67'};
+const MOCK_ACTIVITY = [
+  {LOG_ID:24,CREATED_AT:'2025-01-10T10:30:00',ACTION:'USER_CREATED',ENTITY_TYPE:'users',STATUS:'success',MESSAGE:'User account created: divya@demo.com'},
+  {LOG_ID:23,CREATED_AT:'2025-01-10T10:15:00',ACTION:'PAIRING_ACCEPTED',ENTITY_TYPE:'pairings',STATUS:'success',MESSAGE:null},
+  {LOG_ID:22,CREATED_AT:'2025-01-09T20:00:00',ACTION:'PAIRING_REQUESTED',ENTITY_TYPE:'pairings',STATUS:'success',MESSAGE:null},
+  {LOG_ID:21,CREATED_AT:'2025-01-09T18:45:00',ACTION:'PROFILE_UPDATED',ENTITY_TYPE:'user_profiles',STATUS:'success',MESSAGE:null},
+  {LOG_ID:20,CREATED_AT:'2025-01-09T16:00:00',ACTION:'USER_UPDATED',ENTITY_TYPE:'users',STATUS:'success',MESSAGE:null},
+  {LOG_ID:19,CREATED_AT:'2025-01-08T14:30:00',ACTION:'PAIRING_REJECTED',ENTITY_TYPE:'pairings',STATUS:'success',MESSAGE:null},
+  {LOG_ID:18,CREATED_AT:'2025-01-08T12:00:00',ACTION:'USER_CREATED',ENTITY_TYPE:'users',STATUS:'success',MESSAGE:'User account created: rohan@demo.com'},
+  {LOG_ID:17,CREATED_AT:'2025-01-07T09:00:00',ACTION:'PAIRING_REQUESTED',ENTITY_TYPE:'pairings',STATUS:'success',MESSAGE:null},
+];
+
+// ─────────────────────────────────────────────
+//  API HELPER
+// ─────────────────────────────────────────────
+async function apiFetch(path) {
+  try {
+    const r = await fetch(API + path);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    return j.data || j;
+  } catch { return null; }
+}
+
+// ─────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────
+function statusBadge(s) {
+  const map = {active:'badge-green',inactive:'badge-gray',banned:'badge-red',pending:'badge-yellow'};
+  return `<span class="badge ${map[s]||'badge-gray'}">${s}</span>`;
+}
+function pairBadge(s) {
+  const map = {accepted:'badge-green',pending:'badge-yellow',rejected:'badge-red',cancelled:'badge-gray',expired:'badge-gray'};
+  return `<span class="badge ${map[s]||'badge-gray'}">${s}</span>`;
+}
+function pairingBadge(s) {
+  const map = {paired:'badge-green',pending:'badge-yellow',available:'badge-blue'};
+  return `<span class="badge ${map[s]||'badge-gray'}">${s}</span>`;
+}
+function scoreBar(val) {
+  if (!val) return '—';
+  const pct = Math.round(val);
+  const color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--orange)';
+  return `<div class="score-bar"><div class="score-track"><div class="score-fill" style="width:${pct}%;background:${color}"></div></div><span class="score-num">${pct}</span></div>`;
+}
+function fmtDate(d) { return d ? d.substring(0,10) : '—'; }
+function fmtTime(d) { return d ? new Date(d).toLocaleTimeString() : '—'; }
+function roleBadge(r) {
+  return r === 'admin' ? `<span class="badge badge-purple">${r}</span>` :
+         r === 'moderator' ? `<span class="badge badge-blue">${r}</span>` :
+         `<span style="color:var(--text3);font-size:11px">${r}</span>`;
+}
+const actionIcon = {
+  USER_CREATED:'🆕',USER_UPDATED:'✏️',USER_DEACTIVATED:'🚫',USER_HARD_DELETED:'🗑️',
+  PAIRING_REQUESTED:'📤',PAIRING_ACCEPTED:'✅',PAIRING_REJECTED:'❌',
+  PAIRING_CANCELLED:'↩️',PROFILE_UPDATED:'📝',USER_REGISTERED:'🎉'
+};
+const actionColor = {
+  USER_CREATED:'var(--green)',PAIRING_ACCEPTED:'var(--green)',
+  USER_UPDATED:'var(--blue)',PROFILE_UPDATED:'var(--blue)',PAIRING_REQUESTED:'var(--blue)',
+  PAIRING_REJECTED:'var(--red)',USER_DEACTIVATED:'var(--orange)',
+  PAIRING_CANCELLED:'var(--text3)',USER_HARD_DELETED:'var(--red)'
+};
+
+// ─────────────────────────────────────────────
+//  LOADERS
+// ─────────────────────────────────────────────
+async function loadStats() {
+  const d = await apiFetch('/stats') || MOCK_STATS;
+  document.getElementById('s-total').textContent  = d.TOTAL_USERS   || d.total_users   || '—';
+  document.getElementById('s-active').textContent = d.ACTIVE_USERS  || d.active_users  || '—';
+  document.getElementById('s-today').textContent  = d.NEW_USERS_TODAY|| d.new_users_today||'—';
+  document.getElementById('s-paired').textContent = d.ACTIVE_PAIRINGS||d.active_pairings||'—';
+  document.getElementById('s-pending').textContent= d.PENDING_PAIRINGS||d.pending_pairings||'—';
+  document.getElementById('s-events').textContent = d.EVENTS_TODAY  || d.events_today  || '—';
+  document.getElementById('s-score').textContent  = d.AVG_MATCH_SCORE ? parseFloat(d.AVG_MATCH_SCORE||d.avg_match_score).toFixed(0) : '—';
+  document.getElementById('s-week').textContent   = d.NEW_USERS_WEEK || d.new_users_week || '—';
+}
+
+async function loadUsers() {
+  const search = document.getElementById('user-search')?.value || '';
+  const status = document.getElementById('user-status-filter')?.value || '';
+  const gender = document.getElementById('user-gender-filter')?.value || '';
+  let url = '/users?';
+  if (search) url += `search=${encodeURIComponent(search)}&`;
+  if (status) url += `status=${status}&`;
+  if (gender) url += `gender=${gender}&`;
+
+  let rows = await apiFetch(url);
+  if (!rows) rows = MOCK_USERS.filter(u =>
+    (!search || u.NAME.toLowerCase().includes(search.toLowerCase()) || u.EMAIL.toLowerCase().includes(search.toLowerCase())) &&
+    (!status || u.STATUS === status) &&
+    (!gender || u.GENDER === gender)
+  );
+  rows = rows.data || rows;
+
+  document.getElementById('users-count').textContent = rows.length + ' rows';
+  document.getElementById('badge-users').textContent  = rows.length;
+
+  const body = document.getElementById('users-body');
+  if (!rows.length) { body.innerHTML = `<tr><td colspan="13"><div class="empty"><div class="empty-icon">👥</div><div>No users found</div></div></td></tr>`; return; }
+
+  body.innerHTML = rows.map(u => `
+    <tr>
+      <td class="mono">${u.USER_ID||u.user_id}</td>
+      <td><strong>${u.NAME||u.name}</strong></td>
+      <td style="color:var(--text2)">${u.EMAIL||u.email}</td>
+      <td>${u.GENDER||u.gender||'—'}</td>
+      <td>${roleBadge(u.ROLE||u.role)}</td>
+      <td>${statusBadge(u.STATUS||u.status)}</td>
+      <td>${pairingBadge(u.PAIRING_STATUS||u.pairing_status||'available')}</td>
+      <td>${u.FOOD_PREFERENCE||u.food_preference||'—'}</td>
+      <td>${u.SLEEP_SCHEDULE||u.sleep_schedule||'—'}</td>
+      <td>${u.SOCIAL_TYPE||u.social_type||'—'}</td>
+      <td style="color:var(--text2)">${u.LOCATION||u.location||'—'}</td>
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(u.CREATED_AT||u.created_at)}</td>
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(u.LAST_LOGIN||u.last_login)}</td>
+    </tr>`).join('');
+}
+
+async function loadPairings() {
+  const status = document.getElementById('pair-status-filter')?.value || '';
+  let url = '/pairings' + (status ? `?status=${status}` : '');
+  let rows = await apiFetch(url);
+  if (!rows) rows = MOCK_PAIRINGS.filter(p => !status || p.PAIRING_STATUS === status);
+  rows = rows.data || rows;
+
+  document.getElementById('pairings-count').textContent = rows.length + ' rows';
+  document.getElementById('badge-pairings').textContent  = rows.length;
+
+  document.getElementById('pairings-body').innerHTML = rows.map(p => `
+    <tr>
+      <td class="mono">${p.PAIRING_ID||p.pairing_id}</td>
+      <td><strong>${p.USER1_NAME||p.user1_name}</strong></td>
+      <td><strong>${p.USER2_NAME||p.user2_name}</strong></td>
+      <td>${pairBadge(p.PAIRING_STATUS||p.pairing_status)}</td>
+      <td>${scoreBar(p.MATCH_SCORE||p.match_score)}</td>
+      <td style="color:var(--text2)">${p.INITIATED_BY_NAME||p.initiated_by_name||'—'}</td>
+      <td style="color:var(--text2);max-width:150px;overflow:hidden;text-overflow:ellipsis">${p.MESSAGE||p.message||'—'}</td>
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(p.RESPONDED_AT||p.responded_at)}</td>
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(p.CREATED_AT||p.created_at)}</td>
+    </tr>`).join('');
+}
+
+async function loadActivePairs() {
+  let rows = await apiFetch('/pairings?status=accepted');
+  if (!rows) rows = MOCK_PAIRINGS.filter(p => p.PAIRING_STATUS === 'accepted');
+  rows = rows.data || rows;
+  document.getElementById('active-pairs-count').textContent = rows.length + ' rows';
+  document.getElementById('active-pairs-body').innerHTML = rows.map(p => `
+    <tr>
+      <td class="mono">${p.PAIRING_ID||p.pairing_id}</td>
+      <td><strong>${p.USER1_NAME||p.user1_name}</strong></td>
+      <td><strong>${p.USER2_NAME||p.user2_name}</strong></td>
+      <td>${scoreBar(p.MATCH_SCORE||p.match_score)}</td>
+      <td><span class="badge ${(p.MATCH_SCORE||p.match_score)>=80?'badge-green':(p.MATCH_SCORE||p.match_score)>=60?'badge-yellow':'badge-orange'}">${p.SCORE_LABEL||p.score_label}</span></td>
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(p.RESPONDED_AT||p.responded_at)}</td>
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(p.CREATED_AT||p.created_at)}</td>
+    </tr>`).join('');
+}
+
+async function loadPending() {
+  let rows = await apiFetch('/pairings?status=pending');
+  if (!rows) rows = MOCK_PAIRINGS.filter(p => p.PAIRING_STATUS === 'pending');
+  rows = rows.data || rows;
+  document.getElementById('pending-count').textContent = rows.length + ' rows';
+  document.getElementById('pending-body').innerHTML = rows.map(p => `
+    <tr>
+      <td class="mono">${p.PAIRING_ID||p.pairing_id}</td>
+      <td><strong>${p.USER1_NAME||p.user1_name}</strong></td>
+      <td><strong>${p.USER2_NAME||p.user2_name}</strong></td>
+      <td>${scoreBar(p.MATCH_SCORE||p.match_score)}</td>
+      <td style="color:var(--text2)">${p.MESSAGE||p.message||'—'}</td>
+      <td style="color:var(--yellow);font-family:var(--mono);font-size:11px">${fmtDate(p.EXPIRES_AT||p.expires_at)}</td>
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${p.HOURS_OLD||p.hours_old||'—'}h ago</td>
+    </tr>`).join('');
+}
+
+async function loadAvailable() {
+  let rows = await apiFetch('/users/available');
+  if (!rows) rows = MOCK_USERS.filter(u => u.PAIRING_STATUS === 'available');
+  rows = rows.data || rows;
+  document.getElementById('avail-count').textContent = (rows.length||rows.data?.length||0) + ' rows';
+  const r = rows.data || rows;
+  document.getElementById('available-body').innerHTML = r.map(u => `
+    <tr>
+      <td class="mono">${u.USER_ID||u.user_id}</td>
+      <td><strong>${u.NAME||u.name}</strong></td>
+      <td>${u.GENDER||u.gender||'—'}</td>
+      <td>${u.FOOD_PREFERENCE||u.food_preference||'—'}</td>
+      <td>${u.SLEEP_SCHEDULE||u.sleep_schedule||'—'}</td>
+      <td>${'★'.repeat(u.CLEANLINESS_LEVEL||u.cleanliness_level||3)}</td>
+      <td>${u.SOCIAL_TYPE||u.social_type||'—'}</td>
+      <td style="color:var(--text2)">${u.LOCATION||u.location||'—'}</td>
+    </tr>`).join('');
+}
+
+function renderActivity(rows, containerId) {
+  const el = document.getElementById(containerId);
+  if (!rows?.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📡</div><h3>No activity yet</h3></div>'; return; }
+  el.innerHTML = rows.map(l => {
+    const action = l.ACTION||l.action;
+    const icon = actionIcon[action] || '📋';
+    const color = actionColor[action] || 'var(--text3)';
+    return `<div class="activity-item">
+      <div class="activity-icon" style="background:${color}20">${icon}</div>
+      <div class="activity-body">
+        <div class="activity-action" style="color:${color}">${action}</div>
+        <div class="activity-msg">${l.MESSAGE||l.message||l.ENTITY_TYPE||l.entity_type||''}</div>
+        <div class="activity-time">${new Date(l.CREATED_AT||l.created_at).toLocaleString()}</div>
+      </div>
+      <div class="activity-status"><span class="badge ${(l.STATUS||l.status)==='success'?'badge-green':'badge-red'}">${l.STATUS||l.status}</span></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadActivity() {
+  let rows = await apiFetch('/activity?limit=50');
+  if (!rows) rows = MOCK_ACTIVITY;
+  rows = rows.data || rows;
+  renderActivity(rows, 'activity-list');
+  renderActivity(rows.slice(0, 6), 'dash-activity');
+}
+
+// ─────────────────────────────────────────────
+//  SQL REFERENCE
+// ─────────────────────────────────────────────
+const SQL_QUERIES = [
+  { title:'All Users',      query:'SELECT * FROM vw_all_users;', dot:'var(--green)' },
+  { title:'Active Users',   query:'SELECT * FROM vw_active_users;', dot:'var(--blue)' },
+  { title:'Available Users',query:'SELECT * FROM vw_available_users;', dot:'var(--blue)' },
+  { title:'All Pairings',   query:'SELECT * FROM vw_all_pairings;', dot:'var(--purple)' },
+  { title:'Active Pairs',   query:'SELECT * FROM vw_active_pairings;', dot:'var(--green)' },
+  { title:'Pending Requests',query:'SELECT * FROM vw_pending_pairings;', dot:'var(--yellow)' },
+  { title:'Dashboard Stats',query:'SELECT * FROM vw_dashboard_stats;', dot:'var(--orange)' },
+  { title:'Top Matches',    query:'SELECT * FROM vw_top_matches LIMIT 10;', dot:'var(--green)' },
+  { title:'Recent Activity',query:'SELECT * FROM vw_recent_activity;', dot:'var(--blue)' },
+  { title:'User Activity Summary', query:'SELECT * FROM vw_user_activity_summary;', dot:'var(--purple)' },
+  { title:'Register User', query:`CALL sp_create_user(\n  'Full Name',\n  'email@example.com',\n  '$2b$12$hashedpassword',\n  '9999999999',\n  'Male',\n  'Bio text here',\n  @new_user_id\n);\nSELECT @new_user_id;`, dot:'var(--green)' },
+  { title:'Send Pairing Request', query:`CALL sp_send_pairing_request(\n  1,    -- from user_id\n  3,    -- to user_id\n  'Hi! Want to pair up?',\n  @pairing_id\n);\nSELECT @pairing_id;`, dot:'var(--yellow)' },
+  { title:'Accept Request', query:`CALL sp_respond_to_pairing(\n  1,        -- pairing_id\n  3,        -- responder user_id\n  'accept'  -- or 'reject'\n);`, dot:'var(--green)' },
+  { title:'Compatibility Score', query:`SELECT fn_compatibility_score(1, 5) AS score;`, dot:'var(--blue)' },
+  { title:'New Users Today', query:`SELECT user_id, name, email, created_at\nFROM   users\nWHERE  DATE(created_at) = CURDATE()\nORDER  BY created_at DESC;`, dot:'var(--orange)' },
+  { title:'Live Pairing Status', query:`SELECT pairing_status, COUNT(*) AS count,\n       AVG(match_score) AS avg_score\nFROM   pairings\nGROUP  BY pairing_status;`, dot:'var(--purple)' },
+];
+
+function renderSQLPanels() {
+  document.getElementById('sql-panels').innerHTML = SQL_QUERIES.map(q => `
+    <div class="sql-panel" style="margin-bottom:12px">
+      <div class="sql-header">
+        <div class="sql-dot" style="background:${q.dot}"></div>
+        <div class="sql-dot" style="background:var(--yellow)"></div>
+        <div class="sql-dot" style="background:var(--green)"></div>
+        <span style="margin-left:8px;font-family:var(--mono);font-size:12px;color:var(--text2)">${q.title}</span>
+        <button onclick="navigator.clipboard.writeText(this.dataset.q);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)"
+          data-q="${q.query.replace(/"/g,'&quot;')}"
+          style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer">Copy</button>
+      </div>
+      <div class="sql-code">${q.query.replace(/</g,'&lt;')}</div>
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────────
+//  NAVIGATION
+// ─────────────────────────────────────────────
+const loaders = {
+  dashboard:    () => { loadStats(); loadActivity(); },
+  users:        loadUsers,
+  available:    loadAvailable,
+  pairings:     loadPairings,
+  active_pairs: loadActivePairs,
+  pending:      loadPending,
+  activity:     loadActivity,
+  queries:      renderSQLPanels,
+};
+
+let activeTab = 'dashboard';
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('pane-' + tab).classList.add('active');
+  if (el) el.classList.add('active');
+  activeTab = tab;
+  if (loaders[tab]) loaders[tab]();
+}
+
+function refreshAll() { if (loaders[activeTab]) loaders[activeTab](); loadStats(); }
+
+function toggleAuto(el) {
+  autoRefresh = !autoRefresh;
+  el.classList.toggle('on', autoRefresh);
+  if (autoRefresh) startAutoRefresh(); else clearInterval(refreshTimer);
+}
+
+function startAutoRefresh() {
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(refreshAll, INTERVAL);
+}
+
+// Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}, 1000);
+
+// Init
+renderSQLPanels();
+loadStats();
+loadActivity();
+startAutoRefresh();
+</script>
+</body>
+</html>
